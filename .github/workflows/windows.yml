@@ -1,0 +1,57 @@
+name: Windows
+
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  setup-noVNC:
+    runs-on: windows-latest
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v2
+
+    - name: Install Chocolatey
+      shell: powershell
+      run: |
+        Set-ExecutionPolicy Bypass -Scope Process -Force; [System.Net.ServicePointManager]::SecurityProtocol = [System.Net.SecurityProtocolType]::Tls12; iex ((New-Object System.Net.WebClient).DownloadString('https://community.chocolatey.org/install.ps1'))
+
+    - name: Install TigerVNC
+      shell: powershell
+      run: choco install tigervnc
+
+    - name: Install Node.js (for noVNC)
+      shell: powershell
+      run: choco install nodejs-lts
+
+    - name: Install noVNC
+      shell: powershell
+      run: npm install -g noVNC
+
+    - name: Install Cloudflared
+      shell: powershell
+      run: choco install cloudflared
+
+    - name: Start VNC Server
+      shell: powershell
+      run: |
+        Start-Process -NoNewWindow "C:\Program Files\TigerVNC\vncserver.exe" -ArgumentList ":1"
+
+    - name: Start noVNC Web Server
+      shell: powershell
+      run: |
+        noVNC --vnc localhost:5901 --listen 6080
+
+    - name: Start Cloudflare Tunnel
+      shell: powershell
+      run: |
+        cloudflared tunnel --url http://localhost:6080 --no-tls-verify --hostname YOUR_SUBDOMAIN.yourdomain.com
+
+    - name: Wait for noVNC tunnel to start
+      shell: powershell
+      run: Start-Sleep -Seconds 30
+
+    - name: Display Cloudflare Tunnel URL
+      run: echo "Your noVNC web interface is accessible at https://YOUR_SUBDOMAIN.yourdomain.com"
