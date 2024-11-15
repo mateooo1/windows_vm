@@ -1,4 +1,4 @@
-name: Windows
+name: Windows VM with Google Remote Desktop
 
 on:
   push:
@@ -6,7 +6,7 @@ on:
       - main
 
 jobs:
-  setup-noVNC:
+  setup-google-remote-desktop:
     runs-on: windows-latest
 
     steps:
@@ -18,40 +18,29 @@ jobs:
       run: |
         Set-ExecutionPolicy Bypass -Scope Process -Force; [System.Net.ServicePointManager]::SecurityProtocol = [System.Net.SecurityProtocolType]::Tls12; iex ((New-Object System.Net.WebClient).DownloadString('https://community.chocolatey.org/install.ps1'))
 
-    - name: Install TigerVNC
+    - name: Install Google Chrome
       shell: powershell
-      run: choco install tigervnc
+      run: choco install googlechrome
 
-    - name: Install Node.js (for noVNC)
-      shell: powershell
-      run: choco install nodejs-lts
-
-    - name: Install noVNC
-      shell: powershell
-      run: npm install -g noVNC
-
-    - name: Install Cloudflared
-      shell: powershell
-      run: choco install cloudflared
-
-    - name: Start VNC Server
+    - name: Install Chrome Remote Desktop
       shell: powershell
       run: |
-        Start-Process -NoNewWindow "C:\Program Files\TigerVNC\vncserver.exe" -ArgumentList ":1"
+        # Download Chrome Remote Desktop MSI installer
+        Invoke-WebRequest -Uri "https://dl.google.com/edgedl/chrome-remote-desktop/chromeremotedesktophost.msi" -OutFile "chromeremotedesktophost.msi"
+        
+        # Install Chrome Remote Desktop host silently
+        Start-Process msiexec.exe -ArgumentList '/i', 'chromeremotedesktophost.msi', '/quiet', '/norestart' -Wait
 
-    - name: Start noVNC Web Server
+    - name: Start Chrome Remote Desktop Host
       shell: powershell
       run: |
-        noVNC --vnc localhost:5901 --listen 6080
+        # Start Chrome Remote Desktop host with authentication code and redirect URL
+        & "${Env:PROGRAMFILES(X86)}\Google\Chrome Remote Desktop\CurrentVersion\remoting_start_host.exe" `
+        --code="4/0AeanS0Yt2Lyj3zD2louaooRY_PpbwxTQ-HUUrYXVdWEPC6nJboNH3OF_jTfUqTytD0-Qsw" `
+        --redirect-url="https://remotedesktop.google.com/_/oauthredirect" `
+        --name=$Env:COMPUTERNAME
 
-    - name: Start Cloudflare Tunnel
-      shell: powershell
+    - name: Display Setup Instructions
       run: |
-        cloudflared tunnel --url http://localhost:6080 --no-tls-verify --hostname YOUR_SUBDOMAIN.yourdomain.com
-
-    - name: Wait for noVNC tunnel to start
-      shell: powershell
-      run: Start-Sleep -Seconds 30
-
-    - name: Display Cloudflare Tunnel URL
-      run: echo "Your noVNC web interface is accessible at https://YOUR_SUBDOMAIN.yourdomain.com"
+        echo "Google Remote Desktop host installed and started."
+        echo "The machine is now ready for remote access via Google Remote Desktop."
