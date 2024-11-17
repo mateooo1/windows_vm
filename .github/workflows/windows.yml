@@ -1,46 +1,27 @@
-name: Windows VM with Google Remote Desktop
+name: CI
 
 on:
   push:
-    branches:
-      - main
+  workflow_dispatch:
 
 jobs:
-  setup-google-remote-desktop:
+  build:
     runs-on: windows-latest
-
     steps:
-    - name: Checkout code
-      uses: actions/checkout@v2
-
-    - name: Install Chocolatey
-      shell: powershell
+    - name: Enable Remote Desktop
       run: |
-        Set-ExecutionPolicy Bypass -Scope Process -Force; [System.Net.ServicePointManager]::SecurityProtocol = [System.Net.SecurityProtocolType]::Tls12; iex ((New-Object System.Net.WebClient).DownloadString('https://community.chocolatey.org/install.ps1'))
+        # Enable Remote Desktop
+        Set-ItemProperty -Path 'HKLM:\System\CurrentControlSet\Control\Terminal Server' -name "fDenyTSConnections" -Value 0
+        Enable-NetFirewallRule -DisplayGroup "Remote Desktop"
+        Set-ItemProperty -Path 'HKLM:\System\CurrentControlSet\Control\Terminal Server\WinStations\RDP-Tcp' -name "UserAuthentication" -Value 1
+        # Set a password for the 'runneradmin' user to allow login
+        Set-LocalUser -Name "runneradmin" -Password (ConvertTo-SecureString -AsPlainText "P@ssw0rd!" -Force)
 
-    - name: Install Google Chrome
-      shell: powershell
-      run: choco install googlechrome
+    - name: Install OpenSSH Client
+      run: Add-WindowsCapability -Online -Name OpenSSH.Client~~~~0.0.1.0
 
-    - name: Install Chrome Remote Desktop
-      shell: powershell
+    - name: Start SSH tunnel to remote desktop
       run: |
-        # Download Chrome Remote Desktop MSI installer
-        Invoke-WebRequest -Uri "https://dl.google.com/edgedl/chrome-remote-desktop/chromeremotedesktophost.msi" -OutFile "chromeremotedesktophost.msi"
-        
-        # Install Chrome Remote Desktop host silently
-        Start-Process msiexec.exe -ArgumentList '/i', 'chromeremotedesktophost.msi', '/quiet', '/norestart' -Wait
-
-    - name: Start Chrome Remote Desktop Host
-      shell: powershell
-      run: |
-        # Start Chrome Remote Desktop host with authentication code and redirect URL
-        & "${Env:PROGRAMFILES(X86)}\Google\Chrome Remote Desktop\CurrentVersion\remoting_start_host.exe" `
-        --code="4/0AeanS0Yt2Lyj3zD2louaooRY_PpbwxTQ-HUUrYXVdWEPC6nJboNH3OF_jTfUqTytD0-Qsw" `
-        --redirect-url="https://remotedesktop.google.com/_/oauthredirect" `
-        --name=$Env:COMPUTERNAME
-
-    - name: Display Setup Instructions
-      run: |
-        echo "Google Remote Desktop host installed and started."
-        echo "The machine is now ready for remote access via Google Remote Desktop."
+        # Set up the SSH tunnel to forward the RDP port
+        $env:SSH_COMMAND = "ssh -p 443 -o StrictHostKeyChecking=no -o ServerAliveInterval=30 -R0:127.0.0.1:3389 tcp@a.pinggy.io"
+        Invoke-Expression $env:SSH_COMMAND
