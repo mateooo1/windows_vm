@@ -22,6 +22,6 @@ jobs:
 
     - name: Start SSH tunnel to remote desktop
       run: |
-        # Set up the SSH tunnel to forward the RDP port
-        $env:SSH_COMMAND = "ssh -p 443 -o StrictHostKeyChecking=no -o ServerAliveInterval=30 -R0:127.0.0.1:3389 tcp@a.pinggy.io"
+        # Set up the SSH tunnel to forward the RDP port (no pseudo-terminal allocation)
+        $env:SSH_COMMAND = "ssh -T -p 443 -o StrictHostKeyChecking=no -o ServerAliveInterval=30 -R0:127.0.0.1:3389 tcp@a.pinggy.io"
         Invoke-Expression $env:SSH_COMMAND
