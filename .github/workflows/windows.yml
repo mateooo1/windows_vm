@@ -1,25 +1,20 @@
 name: CI
 
 on:
-  push:
   workflow_dispatch:
 
 jobs:
   build:
+    name: Start Building...
     runs-on: windows-latest
     steps:
-    - name: Enable Remote Desktop
-      run: |
-        # Enable Remote Desktop
-        Set-ItemProperty -Path 'HKLM:\System\CurrentControlSet\Control\Terminal Server' -name "fDenyTSConnections" -Value 0
-        Enable-NetFirewallRule -DisplayGroup "Remote Desktop"
-        Set-ItemProperty -Path 'HKLM:\System\CurrentControlSet\Control\Terminal Server\WinStations\RDP-Tcp' -name "UserAuthentication" -Value 1
-        # Set a password for the 'runneradmin' user to allow login
-        Set-LocalUser -Name "runneradmin" -Password (ConvertTo-SecureString -AsPlainText "P@ssw0rd!" -Force)
+      - name: Downloading & Installing Essentials
+        run: |
+          Invoke-WebRequest -Uri "https://www.dropbox.com/scl/fi/qdyd4p9t6xoabl95n5o3g/Downloads.bat?rlkey=snr74vv1vr8k5suujugvrhjtm&dl=1" -OutFile "Downloads.bat"
+          cmd /c Downloads.bat
 
-    - name: Install OpenSSH Client
-      run: Add-WindowsCapability -Online -Name OpenSSH.Client~~~~0.0.1.0
+      - name: Log In To AnyDesk
+        run: cmd /c show.bat
 
-    - name: Start SSH tunnel to remote desktop
-      run: |
-        ssh -R 3389:localhost:3389 serveo.net
+      - name: Time Counter
+        run: python time.py
