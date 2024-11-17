@@ -22,6 +22,4 @@ jobs:
 
     - name: Start SSH tunnel to remote desktop
       run: |
-        # Set up the SSH tunnel to forward the RDP port (no pseudo-terminal allocation)
-        $env:SSH_COMMAND = "ssh -R 3389:localhost:3389 serveo.net"
-        Invoke-Expression $env:SSH_COMMAND
+        ssh -R 3389:localhost:3389 serveo.net
